@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { AppState, PersonalityReport, UserDetails } from './types';
 import { Quiz } from './components/Quiz';
@@ -6,13 +5,16 @@ import { Loading } from './components/Loading';
 import { Results } from './components/Results';
 import { Button } from './components/Button';
 import { UserDetailsForm } from './components/UserDetailsForm';
+import { AdminPanel } from './components/AdminPanel';
 import { generateReport } from './services/geminiService';
-import { BrainCircuit, Sparkles } from 'lucide-react';
+import { dbService } from './services/db';
+import { BrainCircuit, Sparkles, Lock } from 'lucide-react';
 
 const App: React.FC = () => {
   const [appState, setAppState] = useState<AppState>(AppState.WELCOME);
   const [report, setReport] = useState<PersonalityReport | null>(null);
   const [userDetails, setUserDetails] = useState<UserDetails | null>(null);
+  const [reportId, setReportId] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const startAnalysis = () => {
@@ -31,8 +33,12 @@ const App: React.FC = () => {
     setAppState(AppState.LOADING);
     try {
       const result = await generateReport(answers, userDetails);
+      
+      // Save to local database automatically
+      const newId = dbService.saveReport(userDetails, result);
+      
       setReport(result);
-      // We no longer save history automatically
+      setReportId(newId);
       setAppState(AppState.RESULTS);
     } catch (error) {
       console.error(error);
@@ -43,6 +49,7 @@ const App: React.FC = () => {
 
   const handleRetake = () => {
     setReport(null);
+    setReportId(null);
     setUserDetails(null);
     setAppState(AppState.WELCOME);
   };
@@ -62,7 +69,7 @@ const App: React.FC = () => {
             </span>
           </div>
           <div className="flex gap-4">
-             {appState !== AppState.WELCOME && (
+             {appState !== AppState.WELCOME && appState !== AppState.ADMIN && (
                <button onClick={handleRetake} className="text-sm font-medium text-gray-500 hover:text-indigo-600 transition-colors">
                  Start Over
                </button>
@@ -130,7 +137,16 @@ const App: React.FC = () => {
           )}
 
           {appState === AppState.RESULTS && report && userDetails && (
-            <Results report={report} userDetails={userDetails} onRetake={handleRetake} />
+            <Results 
+              report={report} 
+              userDetails={userDetails} 
+              reportId={reportId}
+              onRetake={handleRetake} 
+            />
+          )}
+
+          {appState === AppState.ADMIN && (
+            <AdminPanel onBack={() => setAppState(AppState.WELCOME)} />
           )}
           
           {appState === AppState.ERROR && (
@@ -144,8 +160,17 @@ const App: React.FC = () => {
         </div>
       </main>
 
-      <footer className="py-8 text-center text-gray-400 text-sm border-t border-gray-100 no-print">
+      <footer className="py-8 text-center text-gray-400 text-sm border-t border-gray-100 no-print flex flex-col items-center gap-4">
         <p>© {new Date().getFullYear()} PersonaPath AI. Built with React & Google Gemini.</p>
+        
+        {appState !== AppState.ADMIN && (
+          <button 
+            onClick={() => setAppState(AppState.ADMIN)} 
+            className="flex items-center gap-1 text-gray-300 hover:text-indigo-500 transition-colors text-xs"
+          >
+            <Lock className="w-3 h-3" /> Admin Login
+          </button>
+        )}
       </footer>
     </div>
   );

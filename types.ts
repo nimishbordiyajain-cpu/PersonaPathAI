@@ -37,11 +37,18 @@ export interface PersonalityReport {
   };
 }
 
+export interface Feedback {
+  rating: number;
+  comment: string;
+  timestamp: number;
+}
+
 export interface SavedReport {
   id: string;
   timestamp: number;
   userDetails: UserDetails;
   report: PersonalityReport;
+  feedback?: Feedback;
 }
 
 export enum AppState {
@@ -50,5 +57,6 @@ export enum AppState {
   QUIZ = 'QUIZ',
   LOADING = 'LOADING',
   RESULTS = 'RESULTS',
-  ERROR = 'ERROR'
+  ERROR = 'ERROR',
+  ADMIN = 'ADMIN'
 }

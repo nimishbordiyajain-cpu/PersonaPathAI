@@ -1,9 +1,6 @@
 import { GoogleGenAI, Type, Schema } from "@google/genai";
 import { PersonalityReport, UserDetails } from "../types";
 
-// Initialize the client
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
 // Define the schema for structured output
 const personalitySchema: Schema = {
   type: Type.OBJECT,
@@ -51,11 +48,26 @@ const personalitySchema: Schema = {
   required: ["personality_type", "strengths", "career_suggestions", "fictional_match"],
 };
 
+let aiClient: GoogleGenAI | null = null;
+
+const getAiClient = () => {
+  if (!aiClient) {
+    const apiKey = process.env.API_KEY;
+    if (!apiKey) {
+      console.error("API_KEY is missing from environment variables.");
+    }
+    aiClient = new GoogleGenAI({ apiKey: apiKey });
+  }
+  return aiClient;
+};
+
 export const generateReport = async (
   userAnswers: { question: string; answer: string }[],
   userDetails: UserDetails
 ): Promise<PersonalityReport> => {
   try {
+    const ai = getAiClient();
+    
     const promptContext = `
       USER PROFILE:
       Name: ${userDetails.name}

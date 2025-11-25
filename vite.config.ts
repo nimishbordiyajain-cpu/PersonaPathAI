@@ -5,8 +5,10 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, '.', '');
   return {
     plugins: [react()],
-    // This allows process.env.API_KEY to work in the browser build
     define: {
+      // Prevents "process is not defined" error in browser
+      'process.env': {}, 
+      // Inject the API Key specifically
       'process.env.API_KEY': JSON.stringify(env.API_KEY)
     }
   };

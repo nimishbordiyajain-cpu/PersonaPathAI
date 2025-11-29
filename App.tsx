@@ -1,4 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { onAuthStateChanged, signOut, User } from 'firebase/auth';
+import { auth } from './services/firebase';
 import { AppState, PersonalityReport, UserDetails } from './types';
 import { Quiz } from './components/Quiz';
 import { Loading } from './components/Loading';
@@ -6,16 +8,40 @@ import { Results } from './components/Results';
 import { Button } from './components/Button';
 import { UserDetailsForm } from './components/UserDetailsForm';
 import { AdminPanel } from './components/AdminPanel';
+import { Login } from './components/Login';
 import { generateReport } from './services/geminiService';
 import { dbService } from './services/db';
-import { BrainCircuit, Sparkles, Lock } from 'lucide-react';
+import { BrainCircuit, Sparkles, Lock, LogOut } from 'lucide-react';
 
 const App: React.FC = () => {
+  const [user, setUser] = useState<User | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  
   const [appState, setAppState] = useState<AppState>(AppState.WELCOME);
   const [report, setReport] = useState<PersonalityReport | null>(null);
   const [userDetails, setUserDetails] = useState<UserDetails | null>(null);
   const [reportId, setReportId] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      setAuthLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      // Reset app state on logout
+      setAppState(AppState.WELCOME);
+      setReport(null);
+      setUserDetails(null);
+    } catch (error) {
+      console.error("Error signing out:", error);
+    }
+  };
 
   const startAnalysis = () => {
     setAppState(AppState.USER_DETAILS);
@@ -54,6 +80,18 @@ const App: React.FC = () => {
     setAppState(AppState.WELCOME);
   };
 
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-4 border-indigo-200 border-t-indigo-600"></div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Login />;
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans selection:bg-indigo-100 selection:text-indigo-900">
       
@@ -68,12 +106,19 @@ const App: React.FC = () => {
               Persona<span className="text-indigo-600">Path</span> AI
             </span>
           </div>
-          <div className="flex gap-4">
+          <div className="flex gap-4 items-center">
              {appState !== AppState.WELCOME && appState !== AppState.ADMIN && (
                <button onClick={handleRetake} className="text-sm font-medium text-gray-500 hover:text-indigo-600 transition-colors">
                  Start Over
                </button>
              )}
+             <button 
+               onClick={handleLogout}
+               className="text-sm font-medium text-gray-500 hover:text-red-600 transition-colors flex items-center gap-1 ml-2"
+               title="Sign Out"
+             >
+               <LogOut className="w-4 h-4" />
+             </button>
           </div>
         </div>
       </header>
